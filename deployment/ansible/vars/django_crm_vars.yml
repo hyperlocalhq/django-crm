@@ -59,8 +59,7 @@ django_settings: "webcrm.settings"
 celery_workers: "{{ ansible_processor_vcpus | int * 2 + 1 }}"
 
 # Git repository
-# TODO: Fork the repo and update this to your repository
-project_repo: "https://github.com/DjangoCRM/django-crm.git"
+project_repo: "git@github.com:hyperlocalhq/django-crm.git"
 project_branch_staging: "main"
 project_branch_production: "main"
 
