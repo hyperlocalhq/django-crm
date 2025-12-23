@@ -9,6 +9,7 @@
   tags: [provision, database]
 
 - name: Create postgresql user
+  become: true
   become_user: postgres
   postgresql_user:
     name: "{{ db_user }}"
@@ -19,6 +20,7 @@
   tags: [provision, database]
 
 - name: Create template database with extensions
+  become: true
   become_user: postgres
   postgresql_db:
     name: db_template_with_extensions
@@ -27,6 +29,7 @@
   tags: [provision, database]
 
 - name: Create postgresql db from the db template
+  become: true
   become_user: postgres
   postgresql_db:
     name: "{{ db_name }}"
@@ -38,6 +41,7 @@
   tags: [provision, database]
 
 - name: Grant postgresql privileges on default database
+  become: true
   become_user: postgres
   postgresql_privs:
     db: "{{ db_name }}"
