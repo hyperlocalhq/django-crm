@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# Quick deployment to any environment
-# Usage: ./deploy.sh [staging|production] [--secrets path/to/secrets.yml] [ansible-playbook-options...]
+# Django CRM Quick Deployment Script
+# Usage: ./django_crm_deploy.sh [staging|production] [--secrets path/to/secrets.yml] [ansible-playbook-options...]
 
 set -e
 
 # Function to show help
 show_help() {
-    echo "🚀 Deploy Script Help"
-    echo "===================="
+    echo "Django CRM Deploy Script"
+    echo "========================"
     echo ""
-    echo "Usage: ./deploy.sh staging|production [--secrets path/to/secrets.yml] [ansible-playbook-options...]"
+    echo "Usage: ./django_crm_deploy.sh staging|production [--secrets path/to/secrets.yml] [ansible-playbook-options...]"
     echo ""
     echo "Arguments:"
     echo "  staging|production       Target environment (required)"
@@ -30,30 +30,16 @@ show_help() {
     echo "    -v, -vv, -vvv          Verbose output (1-3 levels)"
     echo ""
     echo "Examples:"
-    echo "  ./deploy.sh staging                              # Deploy all services to staging"
-    echo "  ./deploy.sh production                           # Deploy all services to production"
-    echo "  ./deploy.sh staging --tags app                   # Deploy only app to staging"
-    echo "  ./deploy.sh production --tags web,config         # Deploy web and config to production"
-    echo "  ./deploy.sh staging --secrets ../secrets.yml     # Deploy to staging with local secrets"
-    echo "  ./deploy.sh staging --tags app --force-handlers  # Deploy app with forced handler execution"
-    echo "  ./deploy.sh staging --check --diff               # Dry run with diff output"
-    echo ""
-    echo "⚠️  Emergency Secrets:"
-    echo "  The --secrets flag is for emergency use when Infisical is down."
-    echo "  It requires a complete and valid secrets.yml file with all necessary variables."
-    echo ""
-    # Execute show_tags.sh and include its output
-    if [ -f "./show_tags.sh" ]; then
-        "./show_tags.sh"
-    else
-        echo "⚠️  show_tags.sh not found - cannot display available tags"
-    fi
+    echo "  ./django_crm_deploy.sh staging                              # Deploy to staging"
+    echo "  ./django_crm_deploy.sh staging --tags app                   # Deploy only app"
+    echo "  ./django_crm_deploy.sh staging --secrets ../secrets.yml     # Deploy with local secrets"
+    echo "  ./django_crm_deploy.sh staging --check --diff               # Dry run with diff output"
 }
 
 # Function to show error and exit
 show_error() {
-    echo "❌ Error: $1"
-    echo "Usage: ./deploy.sh staging|production [--secrets path/to/secrets.yml] [ansible-playbook-options...]"
+    echo "Error: $1"
+    echo "Usage: ./django_crm_deploy.sh staging|production [--secrets path/to/secrets.yml] [ansible-playbook-options...]"
     echo "Use --help for more information"
     exit 1
 }
@@ -127,38 +113,38 @@ if [ -n "$SECRETS_PATH" ]; then
     if [[ "$SECRETS_PATH" != /* ]]; then
         SECRETS_PATH="$SCRIPT_DIR/$SECRETS_PATH"
     fi
-    
+
     # Check if secrets file exists
     if [ ! -f "$SECRETS_PATH" ]; then
-        echo "❌ Secrets file not found: $SECRETS_PATH"
+        echo "Secrets file not found: $SECRETS_PATH"
         exit 1
     fi
-    
+
     # Export environment variable for the plugin
     export ANSIBLE_EMERGENCY_SECRETS_PATH="$SECRETS_PATH"
-    echo "🚨 Emergency mode: Using local secrets file: $SECRETS_PATH"
+    echo "Emergency mode: Using local secrets file: $SECRETS_PATH"
     echo ""
 fi
 
 # Set environment-specific variables
 if [ "$ENVIRONMENT" == "production" ]; then
-    EMOJI="🚨"
+    EMOJI="PRODUCTION"
     CONFIRM_REQUIRED=true
 else
-    EMOJI="🚀"
+    EMOJI="STAGING"
     CONFIRM_REQUIRED=false
 fi
 
-echo "$EMOJI Quick deploy to $(echo $ENVIRONMENT | tr '[:lower:]' '[:upper:]')..."
+echo "=== Django CRM Deploy to $EMOJI ==="
 echo "This will update the application code and restart services."
 echo ""
 
 # Show current git branch for context
 if command -v git &> /dev/null && [ -d .git ]; then
     current_branch=$(git branch --show-current 2>/dev/null || echo "unknown")
-    echo "📝 Current local branch: $current_branch"
+    echo "Current local branch: $current_branch"
     if [ "$ENVIRONMENT" == "production" ]; then
-        echo "⚠️  Make sure you're on the correct branch for production!"
+        echo "WARNING: Make sure you're on the correct branch for production!"
     fi
     echo ""
 fi
@@ -167,24 +153,24 @@ fi
 if [ "$CONFIRM_REQUIRED" == true ]; then
     read -p "Are you sure you want to deploy to PRODUCTION? (y/n): " confirm
     if [ "$confirm" != "$CONFIRM_TEXT" ]; then
-        echo "❌ Production deployment cancelled."
+        echo "Production deployment cancelled."
         exit 1
     fi
 fi
 
 # Build ansible command
-ANSIBLE_CMD="ansible-playbook -i inventories/$ENVIRONMENT/hosts.yml deploy.yml"
+ANSIBLE_CMD="ansible-playbook -i inventories/$ENVIRONMENT/hosts.yml django_crm_deploy.yml"
 
 # Add any additional ansible arguments
 if [ ${#ANSIBLE_ARGS[@]} -gt 0 ]; then
     ANSIBLE_CMD="$ANSIBLE_CMD ${ANSIBLE_ARGS[*]}"
-    echo "📋 Running deployment for $ENVIRONMENT with options: ${ANSIBLE_ARGS[*]}..."
+    echo "Running Django CRM deployment for $ENVIRONMENT with options: ${ANSIBLE_ARGS[*]}..."
 else
-    echo "📋 Running deployment for $ENVIRONMENT..."
+    echo "Running Django CRM deployment for $ENVIRONMENT..."
 fi
 
 # Execute ansible command
 $ANSIBLE_CMD
 
 echo ""
-echo "✅ $ENVIRONMENT deployment completed!"
+echo "=== Django CRM $ENVIRONMENT deployment completed! ==="

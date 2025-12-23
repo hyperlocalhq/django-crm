@@ -1,16 +1,25 @@
 #!/bin/bash
 
-# Full server setup for any environment
-# Usage: ./provision.sh [staging|production] [--secrets path/to/secrets.yml] [ansible-playbook-options...]
+# Django CRM Full Server Provisioning Script
+# Usage: ./django_crm_provision.sh [staging|production] [--secrets path/to/secrets.yml] [ansible-playbook-options...]
 
 set -e
 
 # Function to show help
 show_help() {
-    echo "🚨 Provision Script Help"
-    echo "========================"
+    echo "Django CRM Provision Script"
+    echo "============================"
     echo ""
-    echo "Usage: ./provision.sh staging|production [--secrets path/to/secrets.yml] [ansible-playbook-options...]"
+    echo "Usage: ./django_crm_provision.sh staging|production [--secrets path/to/secrets.yml] [ansible-playbook-options...]"
+    echo ""
+    echo "This script performs FULL SERVER PROVISIONING including:"
+    echo "  - System packages and users"
+    echo "  - Security (firewall, fail2ban, SSH hardening)"
+    echo "  - PostgreSQL database"
+    echo "  - Python environment (uv + venv)"
+    echo "  - Nginx, Gunicorn, Memcached"
+    echo "  - SSL certificates (Let's Encrypt)"
+    echo "  - Django CRM application deployment"
     echo ""
     echo "Arguments:"
     echo "  staging|production       Target environment (required)"
@@ -20,39 +29,16 @@ show_help() {
     echo "  --secrets=path/to/file   Alternative syntax for secrets"
     echo "  --help, -h               Show this help message"
     echo ""
-    echo "Ansible Options:"
-    echo "  All other parameters are passed directly to ansible-playbook."
-    echo "  Common examples:"
-    echo "    --tags tag1,tag2       Provision only specific components"
-    echo "    --force-handlers       Force handlers to run even if tasks don't change"
-    echo "    --diff                 Show differences in files"
-    echo "    --check                Dry run mode"
-    echo "    -v, -vv, -vvv          Verbose output (1-3 levels)"
-    echo ""
     echo "Examples:"
-    echo "  ./provision.sh staging                              # Full server provisioning for staging"
-    echo "  ./provision.sh production                           # Full server provisioning for production"
-    echo "  ./provision.sh staging --tags system                # Setup only system components for staging"
-    echo "  ./provision.sh production --tags web,ssl            # Setup web server and SSL for production"
-    echo "  ./provision.sh staging --secrets ../secrets.yml     # Provision staging with local secrets"
-    echo "  ./provision.sh staging --tags web --check --diff    # Dry run web provisioning with diff output"
-    echo ""
-    echo "⚠️  Emergency Secrets:"
-    echo "  The --secrets flag is for emergency use when Infisical is down."
-    echo "  It requires a complete and valid secrets.yml file with all necessary variables."
-    echo ""
-    # Execute show_tags.sh and include its output
-    if [ -f "./show_tags.sh" ]; then
-        "./show_tags.sh"
-    else
-        echo "⚠️  show_tags.sh not found - cannot display available tags"
-    fi
+    echo "  ./django_crm_provision.sh staging                           # Full provision to staging"
+    echo "  ./django_crm_provision.sh staging --secrets ../secrets.yml  # Provision with local secrets"
+    echo "  ./django_crm_provision.sh staging --check --diff            # Dry run with diff output"
 }
 
 # Function to show error and exit
 show_error() {
-    echo "❌ Error: $1"
-    echo "Usage: ./provision.sh staging|production [--secrets path/to/secrets.yml] [ansible-playbook-options...]"
+    echo "Error: $1"
+    echo "Usage: ./django_crm_provision.sh staging|production [--secrets path/to/secrets.yml] [ansible-playbook-options...]"
     echo "Use --help for more information"
     exit 1
 }
@@ -126,55 +112,57 @@ if [ -n "$SECRETS_PATH" ]; then
     if [[ "$SECRETS_PATH" != /* ]]; then
         SECRETS_PATH="$SCRIPT_DIR/$SECRETS_PATH"
     fi
-    
+
     # Check if secrets file exists
     if [ ! -f "$SECRETS_PATH" ]; then
-        echo "❌ Secrets file not found: $SECRETS_PATH"
+        echo "Secrets file not found: $SECRETS_PATH"
         exit 1
     fi
-    
+
     # Export environment variable for the plugin
     export ANSIBLE_EMERGENCY_SECRETS_PATH="$SECRETS_PATH"
-    echo "🚨 Emergency mode: Using local secrets file: $SECRETS_PATH"
+    echo "Emergency mode: Using local secrets file: $SECRETS_PATH"
     echo ""
 fi
 
-# Set environment-specific variables
-if [ "$ENVIRONMENT" == "production" ]; then
-    EMOJI="🚨"
-else
-    EMOJI="🚀"
-fi
-
-echo "$EMOJI $(echo $ENVIRONMENT | tr '[:lower:]' '[:upper:]') FULL SETUP $EMOJI"
+echo "=========================================="
+echo "  Django CRM FULL SERVER PROVISIONING"
+echo "  Environment: $(echo $ENVIRONMENT | tr '[:lower:]' '[:upper:]')"
+echo "=========================================="
+echo ""
+echo "WARNING: This will perform FULL SERVER SETUP including:"
+echo "  - Install system packages"
+echo "  - Configure security (firewall, fail2ban)"
+echo "  - Setup PostgreSQL database"
+echo "  - Install Python and create virtual environment"
+echo "  - Configure Nginx, Gunicorn, Memcached"
+echo "  - Setup SSL certificates"
+echo "  - Deploy Django CRM application"
 echo ""
 
-# Show current git branch for context
-if command -v git &> /dev/null && [ -d .git ]; then
-    current_branch=$(git branch --show-current 2>/dev/null || echo "unknown")
-    echo "📝 Current local branch: $current_branch"
-    echo ""
-fi
-
-read -p "Are you SURE you want to run FULL SETUP on $ENVIRONMENT? (type '$CONFIRM_TEXT'): " confirm
+# Always require confirmation for provisioning
+read -p "Are you sure you want to provision $ENVIRONMENT? (y/n): " confirm
 if [ "$confirm" != "$CONFIRM_TEXT" ]; then
-    echo "❌ $ENVIRONMENT setup cancelled."
+    echo "Provisioning cancelled."
     exit 1
 fi
 
 # Build ansible command
-ANSIBLE_CMD="ansible-playbook -i inventories/$ENVIRONMENT/hosts.yml provision.yml"
+ANSIBLE_CMD="ansible-playbook -i inventories/$ENVIRONMENT/hosts.yml django_crm_provision.yml"
 
 # Add any additional ansible arguments
 if [ ${#ANSIBLE_ARGS[@]} -gt 0 ]; then
     ANSIBLE_CMD="$ANSIBLE_CMD ${ANSIBLE_ARGS[*]}"
-    echo "📋 Running provisioning for $ENVIRONMENT with options: ${ANSIBLE_ARGS[*]}..."
+    echo "Running Django CRM provisioning for $ENVIRONMENT with options: ${ANSIBLE_ARGS[*]}..."
 else
-    echo "📋 Running full provisioning for $ENVIRONMENT..."
+    echo "Running Django CRM provisioning for $ENVIRONMENT..."
 fi
+echo ""
 
 # Execute ansible command
 $ANSIBLE_CMD
 
 echo ""
-echo "✅ Full $ENVIRONMENT setup completed successfully!"
+echo "=========================================="
+echo "  Django CRM $ENVIRONMENT PROVISIONING COMPLETE!"
+echo "=========================================="
