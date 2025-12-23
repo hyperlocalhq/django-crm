@@ -1,9 +1,3 @@
 ---
-# Django CRM Staging Group Variables
-
+# Staging environment variables
 deployment_environment: staging
-
-# Include Django CRM-specific variables
-# These override the default appserver_vars.yml
-vars_files:
-  - "../../vars/django_crm_vars.yml"

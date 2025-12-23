@@ -203,21 +203,6 @@ server {
     }
 }
 
-# Dedicated server blocks for metrics
-server {
-    listen 8080;
-    server_name {{ private_ip }};
-    server_tokens off;
-
-    # stub status for nginx metrics
-    location = /stub_status {
-      stub_status;
-      allow 127.0.0.1;
-      allow {{ monitoring_private_ip }};
-      deny all;
-    }
-}
-
 server {
     listen 80;
     server_name {{ private_ip }};
@@ -233,7 +218,7 @@ server {
         deny all;
     }
 }
-# End dedicated server blocks for metrics
+{% endif %}
 
 
 # If request's Host header not in "server_name" values, close the connection.

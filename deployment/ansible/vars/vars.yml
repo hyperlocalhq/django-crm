@@ -76,6 +76,21 @@ secret_admin_prefix: "admin/"
 secret_login_prefix: "login/"
 
 # =============================================================================
+# WEB SERVER & SSL
+# =============================================================================
+
+# Let's Encrypt email for SSL certificates
+letsencrypt_email: "admin@example.com"
+
+# Basic auth for staging (protects staging site)
+staging_basic_auth_user: "staging"
+staging_basic_auth_password: "CHANGE_ME_staging_password"
+
+# Basic auth for docs (if you have a docs subdomain)
+docs_basic_auth_user: "docs"
+docs_basic_auth_password: "CHANGE_ME_docs_password"
+
+# =============================================================================
 # OPTIONAL FEATURES
 # =============================================================================
 
@@ -88,3 +103,8 @@ sentry_dsn: ""
 
 # GeoIP (requires MaxMind database files in media/geodb/)
 geoip_enabled: false
+
+# Monitoring (optional - for nginx metrics endpoints)
+# Set these if you have internal monitoring
+# private_ip: ""
+# monitoring_private_ip: ""
