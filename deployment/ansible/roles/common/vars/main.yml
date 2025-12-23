@@ -1,0 +1,42 @@
+---
+# Common role variables
+
+# System packages
+system_packages:
+  - binutils
+  - build-essential
+  - exiftool
+  - fail2ban
+  - git
+  - libfreetype6-dev
+  - libjpeg8-dev
+  - liblcms2-dev
+  - libmemcached-dev
+  - libproj-dev
+  - libtiff5-dev
+  - libwebp-dev
+  - mailutils
+  - memcached
+  - nginx-full
+  - postgresql-16
+  - postgresql-16-postgis-3
+  - postgresql-server-dev-16
+  - postgresql-client-16
+  - python3-apt
+  - python3-dev
+  - python3-pip
+  - python3-psycopg2
+  - python3-passlib
+  - redis-server
+  - screen
+  - ufw
+  - unzip
+  - zlib1g-dev
+  # for python-magic (https://github.com/ahupp/python-magic#debianubuntu)
+  - libmagic1
+  # WeasyPrint prerequisites (https://weasyprint.readthedocs.io/en/latest/install.html#debian-ubuntu)
+  - libsdl-pango-dev
+
+
+# System configuration
+timezone: "Europe/Berlin"

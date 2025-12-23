@@ -1,0 +1,43 @@
+---
+# Python environment setup tasks
+
+- name: Setup uv
+  block:
+    - name: Check if uv is already installed
+      stat:
+        path: "{{ home_dir }}/.local/bin/uv"
+      register: uv_installed
+
+    - name: Install uv
+      become: True
+      become_user: "{{ user_username }}"
+      shell: "curl -LsSf https://astral.sh/uv/install.sh | sh"
+      args:
+        creates: "{{ home_dir }}/.local/bin/uv"
+        executable: /bin/bash
+      when: not uv_installed.stat.exists
+  tags: [provision, python]
+
+- name: Setup venv
+  block:
+    - name: Create virtual environment
+      become: True
+      become_user: "{{ user_username }}"
+      shell: "{{ uv_executable }} venv --python {{ python_version }} --allow-existing {{ venv_dir }}"
+      args:
+        creates: "{{ venv_executable }}"
+
+    - name: Always activate the virtual environment for {{ user_username }} user
+      lineinfile:
+        path: "{{ home_dir }}/.bash_profile"
+        line: "source {{ venv_activate }}"
+        state: present
+        create: True
+
+    - name: Set default Django settings
+      lineinfile:
+        path: "{{ home_dir }}/.bash_profile"
+        state: present
+        create: True
+        line: "DJANGO_SETTINGS_MODULE={{ django_settings }}"
+  tags: [provision, python]

@@ -1,0 +1,103 @@
+---
+# Security hardening tasks
+
+- name: Firewall setup
+  block:
+    - name: Disable firewall
+      ufw:
+        state: disabled
+
+    - name: Deny every incoming connection
+      ufw:
+        policy: deny
+        direction: incoming
+
+    - name: Allow incoming SSH connections
+      ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+
+    - name: Allow incoming web requests
+      ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: "{{ item.proto }}"
+      loop:
+        - { port: "80", proto: "tcp" }
+        - { port: "443", proto: "tcp" }
+
+    - name: Allow incoming mail-related connections
+      ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: "{{ item.proto }}"
+      loop:
+        - { port: "25", proto: "tcp" }
+        - { port: "587", proto: "tcp" }
+        - { port: "465", proto: "tcp" }
+        - { port: "143", proto: "tcp" }
+        - { port: "993", proto: "tcp" }
+        - { port: "110", proto: "tcp" }
+        - { port: "995", proto: "tcp" }
+
+    - name: Enable firewall
+      ufw:
+        state: enabled
+  tags: [provision, security]
+
+- name: Create SSH config directory
+  file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [provision, security]
+
+- name: Configure SSH security settings
+  copy:
+    src: ssh_security.conf
+    dest: /etc/ssh/sshd_config.d/security.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart sshd
+  tags: [provision, security, config]
+
+- name: Configure fail2ban settings
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+  loop:
+    - { src: "jail.local", dest: "{{ fail2ban_config_dir }}/jail.local" }
+    - { src: "sshd-concurrent.conf", dest: "{{ fail2ban_filter_dir }}/sshd-concurrent.conf" }
+    - { src: "sshd-concurrent-jail.conf", dest: "{{ fail2ban_jail_dir }}/sshd-concurrent.conf" }
+    - { src: "django-login.conf", dest: "{{ fail2ban_filter_dir }}/django-login.conf" }
+    - { src: "django-login-jail.conf", dest: "{{ fail2ban_jail_dir }}/django-login.conf" }
+    - { src: "nginx-444.conf", dest: "{{ fail2ban_filter_dir }}/nginx-444.conf" }
+    - { src: "nginx-444-jail.conf", dest: "{{ fail2ban_jail_dir }}/nginx-444.conf" }
+    - { src: "nginx-http.conf", dest: "{{ fail2ban_filter_dir }}/nginx-http.conf" }
+    - { src: "nginx-http-jail.conf", dest: "{{ fail2ban_jail_dir }}/nginx-http.conf" }
+  tags: [provision, security, config]
+
+- name: Configure system security settings
+  copy:
+    src: sysctl-security.conf
+    dest: /etc/sysctl.d/10-security.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload sysctl
+  tags: [provision, security, config]
+
+- name: Make sure fail2ban is running
+  systemd:
+    name: fail2ban.service
+    state: started
+    enabled: True
+  tags: [provision, security]

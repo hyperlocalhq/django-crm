@@ -1,0 +1,3 @@
+# Source ~/.bashrc in the interactive login shells because .bashrc isn't sourced for interactive login shells:
+case "$-" in *i*) if [ -r ~/.bashrc ]; then . ~/.bashrc; fi;; esac
+

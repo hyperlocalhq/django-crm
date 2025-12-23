@@ -1,0 +1,7 @@
+---
+# Database role handlers
+
+- name: Restart postgres
+  systemd:
+    name: postgresql.service
+    state: restarted

@@ -1,0 +1,169 @@
+---
+# Common system setup tasks
+
+- name: Set hostname
+  hostname:
+    name: "{{ server_name }}"
+  tags: [provision, system]
+
+- name: "Set timezone to {{ timezone }}"
+  community.general.timezone:
+    name: "{{ timezone }}"
+  tags: [provision, system]
+
+- name: Install system packages
+  block:
+    - name: Install system packages
+      apt:
+        pkg: "{{ system_packages }}"
+        update-cache: True
+
+    - name: Install core (via snap)
+      snap:
+        name: core
+
+    - name: Refresh core snap package
+      command: snap refresh core
+
+    - name: Install certbot (via snap with classic confinement)
+      snap:
+        name: certbot
+        classic: yes
+  tags: [provision, system]
+
+- name: Install micro editor
+  shell: curl https://getmic.ro | bash > /dev/null 2>&1
+  args:
+    chdir: /usr/local/bin
+    creates: /usr/local/bin/micro
+  tags: [provision, system]
+
+- name: Prepare dirs, users and groups
+  block:
+    - name: Create main directory for the project
+      file:
+        path: "{{ home_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Create Unix user group
+      group:
+        name: "{{ group_groupname }}"
+        state: present
+
+    - name: Create Unix user
+      user:
+        name: "{{ user_username }}"
+        shell: /bin/bash
+        groups: "{{ group_groupname }}"
+        home: "{{ home_dir }}"
+
+    - name: Create inner directories for the project
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ user_username }}"
+        group: "{{ group_groupname }}"
+        mode: "0755"
+      loop:
+        - "{{ home_dir }}/commands"
+        - "{{ home_dir }}/project"
+        - "{{ home_dir }}/db_backups"
+        - "{{ home_dir }}/media"
+        - "{{ home_dir }}/logs"
+        - "{{ home_dir }}/tmp"
+        - "{{ home_dir }}/.fonts"
+
+    - name: Create .ssh directory for the project
+      file:
+        path: "{{ home_dir }}/.ssh"
+        state: directory
+        owner: "{{ user_username }}"
+        group: "{{ group_groupname }}"
+        mode: "0700"
+
+    - name: Set home directory owner/group
+      file:
+        dest: "{{ home_dir }}"
+        owner: "{{ project_name }}"
+        group: "{{ group_groupname }}"
+        recurse: True
+
+    - name: "Add nginx user to {{ group_groupname }}"
+      user:
+        name: www-data
+        groups: "{{ group_groupname }}"
+        append: yes
+  tags: [provision, system]
+
+- name: Setup bash-related files for root and user
+  block:
+    - name: Copy files/root_bashrc as /root/.bashrc
+      copy:
+        src: root_bashrc
+        dest: /root/.bashrc
+
+    - name: "Copy files/user_bash_aliases as {{ user_username }}/.bash_aliases"
+      copy:
+        src: user_bash_aliases
+        dest: "{{ home_dir }}/.bash_aliases"
+        owner: "{{ user_username }}"
+        group: "{{ group_groupname }}"
+        mode: "0644"
+
+    - name: "Copy files/user_bash_profile as {{ user_username }}/.bash_profile"
+      copy:
+        src: user_bash_profile
+        dest: "{{ home_dir }}/.bash_profile"
+        owner: "{{ user_username }}"
+        group: "{{ group_groupname }}"
+        mode: "0644"
+
+    - name: "Copy files/user_bashrc as {{ user_username }}/.bashrc"
+      copy:
+        src: user_bashrc
+        dest: "{{ home_dir }}/.bashrc"
+        owner: "{{ user_username }}"
+        group: "{{ group_groupname }}"
+        mode: "0644"
+  tags: [provision, system]
+
+- name: Prepare locales
+  block:
+    - name: Ensure locale de_DE.UTF-8 exists
+      locale_gen:
+        name: de_DE.UTF-8
+        state: present
+
+    - name: Set locale
+      copy:
+        src: locale
+        dest: "/etc/default/locale"
+        owner: root
+        group: root
+        mode: "0644"
+        backup: True
+  tags: [provision, system]
+
+- name: Prepare Redis
+  block:
+    - name: Change service type to "notify"
+      lineinfile:
+        path: /etc/systemd/system/redis-server.service.d/override.conf
+        line: "[Service]\nType=notify"
+        state: present
+        create: True
+      notify:
+        - Restart redis-server
+
+    - name: Set redis conf
+      copy:
+        src: redis.conf
+        dest: /etc/redis/redis.conf
+        owner: root
+        group: root
+        mode: "0644"
+        backup: True
+      notify:
+        - Restart redis-server
+  tags: [provision, system]

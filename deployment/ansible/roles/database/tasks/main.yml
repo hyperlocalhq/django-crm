@@ -1,0 +1,59 @@
+---
+# PostgreSQL database setup tasks
+
+- name: Make sure postgresql server is running
+  systemd:
+    name: postgresql.service
+    state: started
+    enabled: True
+  tags: [provision, database]
+
+- name: Create postgresql user
+  become_user: postgres
+  postgresql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    role_attr_flags: CREATEDB
+  notify:
+    - Restart postgres
+  tags: [provision, database]
+
+- name: Create template database with extensions
+  become_user: postgres
+  postgresql_db:
+    name: db_template_with_extensions
+    encoding: "UTF-8"
+    template: template0
+  tags: [provision, database]
+
+- name: Create postgresql db from the db template
+  become_user: postgres
+  postgresql_db:
+    name: "{{ db_name }}"
+    owner: "{{ db_user }}"
+    encoding: "UTF-8"
+    template: db_template_with_extensions
+  notify:
+    - Restart postgres
+  tags: [provision, database]
+
+- name: Grant postgresql privileges on default database
+  become_user: postgres
+  postgresql_privs:
+    db: "{{ db_name }}"
+    role: "{{ db_user }}"
+    objs: ALL_IN_SCHEMA
+    privs: SELECT,INSERT,UPDATE,DELETE
+  notify:
+    - Restart postgres
+  tags: [provision, database]
+
+- name: Create .pgpass file
+  template:
+    src: pgpass.j2
+    dest: "{{ home_dir }}/.pgpass"
+    owner: "{{ user_username }}"
+    group: "{{ user_username }}"
+    mode: "0600"
+    backup: True
+  tags: [provision, database]

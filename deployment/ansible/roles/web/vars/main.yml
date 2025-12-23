@@ -1,0 +1,8 @@
+---
+# Web role variables
+
+# SSL/TLS configuration
+letsencrypt_email: "jetsonadmin@studio38.de"
+
+staging_basic_auth_path: "/etc/nginx/htpasswd.staging"
+docs_basic_auth_path: "/etc/nginx/htpasswd.docs"

@@ -1,0 +1,25 @@
+---
+# Full server provisioning playbook
+
+- hosts: webservers
+  vars_files:
+    - vars/appserver_vars.yml
+  gather_facts: True
+  become: True
+  module_defaults:
+    apt:
+      force_apt_get: yes
+
+  pre_tasks:
+    - name: Check for single host
+      fail: msg="Single host check failed. {{ group_names }}"
+      when: play_hosts|length != 1
+    - debug: msg='I got executed! {{ group_names }}'
+
+  roles:
+    - common
+    - security
+    - database
+    - python
+    - web
+    - app

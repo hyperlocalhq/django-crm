@@ -1,0 +1,36 @@
+MAILTO=""
+HOME=/var/webapps/{{ project_name }}
+PATH=/var/webapps/{{ project_name }}/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+SHELL=/bin/bash
+CMD_PATH=/var/webapps/{{ project_name }}/commands
+
+##   Entry                      Description                                                             Equivalent To
+##   @yearly (or @annually)     Run once a year at midnight in the morning of January 1                 0 0 1 1 *
+##   @monthly                   Run once a month at midnight in the morning of the first of the month   0 0 1 * *
+##   @weekly                    Run once a week at midnight in the morning of Sunday                    0 0 * * 0
+##   @daily                     Run once a day at midnight                                              0 0 * * *
+##   @hourly                    Run once an hour at the beginning of the hour                           0 * * * *
+##   @reboot                    Run at startup                                                          @reboot
+##
+##   *    *    *    *    *  command to be executed
+##   ┬    ┬    ┬    ┬    ┬
+##   │    │    │    │    │
+##   │    │    │    │    │
+##   │    │    │    │    └───── day of week (0 - 7) (0 or 7 are Sunday, or use names)
+##   │    │    │    └────────── month (1 - 12)
+##   │    │    └─────────────── day of month (1 - 31)
+##   │    └──────────────────── hour (0 - 23)
+##   └───────────────────────── min (0 - 59)
+##
+##   The following example will run each 10 minutes
+##   */10 * * * * /usr/bin/some_directory/some_command.sh
+
+# daily
+05    01    *     *     *    ${CMD_PATH}/django.sh           -c=clearsessions                      -p={{ project_name }} -e={{ deployment_environment }} -d=1  > /dev/null
+05    03    *     *     *    ${CMD_PATH}/update_expired.sh                                         -p={{ project_name }} -e={{ deployment_environment }} -d=1  > /dev/null
+30    03    *     *     *    ${CMD_PATH}/django.sh           -c=import_from_dhm                    -p={{ project_name }} -e={{ deployment_environment }}       > /dev/null
+#35    03    *     *     *    ${CMD_PATH}/django.sh          -c=import_from_stadtmuseum            -p={{ project_name }} -e={{ deployment_environment }}       > /dev/null
+45    03    *     *     *    ${CMD_PATH}/django.sh           -c=import_from_planetarium            -p={{ project_name }} -e={{ deployment_environment }}       > /dev/null
+00    04    *     *     *    ${CMD_PATH}/django.sh           -c=rebuild_index -a="--noinput"       -p={{ project_name }} -e={{ deployment_environment }} -d=1  > /dev/null
+30    04    *     *     *    ${CMD_PATH}/django.sh           -c=search_index  -a="--rebuild -f"    -p={{ project_name }} -e={{ deployment_environment }}       > /dev/null
+05    06    *     *     *    ${CMD_PATH}/backup_db.sh        -t=scheduled                          -p={{ project_name }} -e={{ deployment_environment }}       > /dev/null

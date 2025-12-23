@@ -1,0 +1,49 @@
+MAILTO=""
+HOME=/var/webapps/{{ project_name }}
+PATH=/var/webapps/{{ project_name }}/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+SHELL=/bin/bash
+CMD_PATH=/var/webapps/{{ project_name }}/commands
+
+##   Entry                      Description                                                             Equivalent To
+##   @yearly (or @annually)     Run once a year at midnight in the morning of January 1                 0 0 1 1 *
+##   @monthly                   Run once a month at midnight in the morning of the first of the month   0 0 1 * *
+##   @weekly                    Run once a week at midnight in the morning of Sunday                    0 0 * * 0
+##   @daily                     Run once a day at midnight                                              0 0 * * *
+##   @hourly                    Run once an hour at the beginning of the hour                           0 * * * *
+##   @reboot                    Run at startup                                                          @reboot
+##
+##   *    *    *    *    *  command to be executed
+##   ┬    ┬    ┬    ┬    ┬
+##   │    │    │    │    │
+##   │    │    │    │    │
+##   │    │    │    │    └───── day of week (0 - 7) (0 or 7 are Sunday, or use names)
+##   │    │    │    └────────── month (1 - 12)
+##   │    │    └─────────────── day of month (1 - 31)
+##   │    └──────────────────── hour (0 - 23)
+##   └───────────────────────── min (0 - 59)
+##
+##   The following example will run each 10 minutes
+##   */10 * * * * /usr/bin/some_directory/some_command.sh
+
+
+# every five minutes
+*/5    *    *    *    *     ${CMD_PATH}/django.sh                     -c=send_mails                                 -p={{ project_name }} -e={{ deployment_environment }} -d=1    && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/10e1e9f4-3030-4f25-a9cd-d75fab2eaef7 > /dev/null
+
+# hourly
+
+# daily
+10    00    *    *     *    ${CMD_PATH}/django.sh                     -c=clearsessions                              -p={{ project_name }} -e={{ deployment_environment }} -d=1    && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/125eb87d-f03c-42d9-90b1-5cd6b694e7b0 > /dev/null
+15    00    *    *     *    ${CMD_PATH}/django.sh                     -c=import_from_smb_smart                      -p={{ project_name }} -e={{ deployment_environment }}         && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/b5e913ff-9d01-4c97-b06f-fcab53278e28 > /dev/null
+25    00    *    *     *    ${CMD_PATH}/django.sh                     -c=import_from_dhm                            -p={{ project_name }} -e={{ deployment_environment }}         && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/af791a61-c37d-4e5f-a214-e754545cd798 > /dev/null
+30    00    *    *     *    ${CMD_PATH}/django.sh                     -c=import_from_stadtmuseum                    -p={{ project_name }} -e={{ deployment_environment }}         && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/8287e83c-d605-4aa7-a004-0717100da467 > /dev/null
+35    00    *    *     *    ${CMD_PATH}/update_expired.sh                                                           -p={{ project_name }} -e={{ deployment_environment }} -d=1    && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/363e5ce7-fd50-466d-82ef-4c7a0035a749 > /dev/null
+40    00    *    *     *    ${CMD_PATH}/django.sh                     -c=rebuild_index -a="--noinput"               -p={{ project_name }} -e={{ deployment_environment }} -d=30   && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/76b7c3c0-970a-42bf-ae6e-89b00fc9e5fb > /dev/null
+30    01    *    *     *    ${CMD_PATH}/collect_advertising_stats.sh                                                -p={{ project_name }} -e={{ deployment_environment }} -d=1    && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/492269bf-c382-49bc-9c03-d81f179e5af8 > /dev/null
+35    01    *    *     *    ${CMD_PATH}/django.sh                     -c=autotranslate_new_and_changed_entries      -p={{ project_name }} -e={{ deployment_environment }}         && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/f3dbf3b8-48c5-4840-8730-872cf92dcaab > /dev/null
+00    02    *    *     1,4  ${CMD_PATH}/django.sh                     -c=backup_media -a="--source=local"           -p={{ project_name }} -e={{ deployment_environment }}         && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/32294271-61ec-4559-9954-dfbbc6ecfe66 > /dev/null
+30    03    *    *     *    ${CMD_PATH}/django.sh                     -c=search_index -a="--rebuild -f"             -p={{ project_name }} -e={{ deployment_environment }}         && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/d398f6e3-9553-414e-827b-a48df0bd81c9 > /dev/null
+30    06    *    *     *    ${CMD_PATH}/backup_db.sh                  -t=scheduled                                  -p={{ project_name }} -e={{ deployment_environment }}         && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/75a76c1c-6900-497f-b6d6-304c0029ac6c > /dev/null
+35    06    *    *     *    ${CMD_PATH}/django.sh                     -c=backup_data                                -p={{ project_name }} -e={{ deployment_environment }}         && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/4dd4746d-8c1b-40c8-8095-b74492441d66 > /dev/null
+
+# weekly
+#35    06    *    *    0    ${CMD_PATH}/django.sh                     -c=check_links                                -p={{ project_name }} -e={{ deployment_environment }} -d=1    && curl -fsS --retry 3 https://healthchecks.hyperlocal.cloud/ping/99f2e288-328a-4255-a585-8010e2efadb0 > /dev/null

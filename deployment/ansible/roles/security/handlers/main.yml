@@ -1,0 +1,15 @@
+---
+# Security handlers
+
+- name: Restart sshd
+  systemd:
+    name: ssh.service
+    state: restarted
+
+- name: Restart fail2ban
+  systemd:
+    name: fail2ban.service
+    state: restarted
+
+- name: Reload sysctl
+  command: sysctl --system

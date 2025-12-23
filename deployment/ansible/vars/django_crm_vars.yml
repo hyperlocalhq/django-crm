@@ -1,0 +1,116 @@
+---
+# Django CRM Project Variables
+# This file contains variables specific to Django CRM deployment
+# See: https://github.com/DjangoCRM/django-crm
+
+# Project structure will be like this:
+# var/
+# └── webapps/                              ← install_root
+#     └── django_crm/                       ← home_dir
+#         ├── .ssh/
+#         ├── commands/
+#         ├── db_backups/
+#         ├── logs/
+#         ├── project/
+#         │   └── django_crm/               ← local_repo_dir
+#         │       ├── .git/
+#         │       ├── webcrm/               ← Django CRM's main module
+#         │       ├── crm/                  ← CRM app
+#         │       ├── common/               ← Common utilities
+#         │       ├── massmail/             ← Mass mail app
+#         │       ├── analytics/            ← Analytics app
+#         │       ├── tasks/                ← Tasks app
+#         │       ├── chat/                 ← Chat app
+#         │       ├── voip/                 ← VoIP integration
+#         │       ├── manage.py
+#         │       └── requirements.txt
+#         ├── media/
+#         │   └── geodb/                    ← GeoIP databases (optional)
+#         ├── venv/
+#         └── .bash_profile
+
+
+# Project identification
+project_name: "django_crm"
+user_username: "{{ project_name }}"
+group_groupname: "webapps"
+
+# Directory structure
+install_root: "/var/{{ group_groupname }}"
+home_dir: "{{ install_root }}/{{ project_name }}"
+local_repo_dir: "{{ home_dir }}/project/{{ project_name }}"
+
+# DNS
+server_name: "{{ domain_name }}"
+
+# Django CRM WSGI - it uses 'webcrm.wsgi' (not per-environment)
+wsgi_module: "webcrm.wsgi"
+
+# Static/Media
+static_root: "{{ local_repo_dir }}/static"
+media_root: "{{ home_dir }}/media"
+
+# Django CRM settings module
+# Note: Django CRM uses a single settings file: webcrm/settings.py
+django_settings: "webcrm.settings"
+
+# Background workers (Celery not Huey - Django CRM uses Celery)
+# huey_workers: "{{ ansible_processor_vcpus | int * 2 + 1 }}"
+celery_workers: "{{ ansible_processor_vcpus | int * 2 + 1 }}"
+
+# Git repository
+# TODO: Update this to your forked repository
+project_repo: "git@github.com:hyperlocalhq/django-crm.git"
+project_branch_staging: "main"
+project_branch_production: "main"
+
+# Requirements file location (Django CRM uses requirements.txt at root)
+requirements_file: "requirements.txt"
+
+# Infisical configuration
+# Note: You'll need to create a "django_crm" project in Infisical
+infisical_config:
+  host: "https://infisical.hyperlocal.cloud"
+  projects:
+    # Shared secrets across all projects (lower priority)
+    - name: "shared"
+      priority: 100
+      path: "/"
+      credentials_suffix: "SHARED"
+    # Project-specific secrets (higher priority - will override shared)
+    - name: "{{ project_name }}"
+      priority: 1
+      path: "/"
+      credentials_suffix: "DJANGO_CRM"
+
+# uv package manager
+uv_executable: "{{ home_dir }}/.local/bin/uv"
+
+# Virtual environment
+venv_dir: "{{ home_dir }}/venv"
+venv_activate: "{{ venv_dir }}/bin/activate"
+venv_executable: "{{ venv_dir }}/bin/python"
+
+# Database - Django CRM supports MySQL (default) or PostgreSQL
+# Your Ansible setup uses PostgreSQL, so we'll use that
+# Required secrets in Infisical:
+#   - db_engine: django.db.backends.postgresql
+#   - db_name: django_crm
+#   - db_user: django_crm
+#   - db_password: <secure_password>
+#   - db_host: localhost
+#   - db_port: 5432
+
+# Email settings (required for Django CRM)
+# Required secrets in Infisical:
+#   - email_host: <smtp_server>
+#   - email_host_user: <smtp_user>
+#   - email_host_password: <smtp_password>
+#   - email_port: 587 (or 465 for SSL)
+#   - email_use_tls: true
+
+# Django CRM specific features (optional)
+# These would be set in secrets:
+#   - google_recaptcha_site_key: (optional)
+#   - google_recaptcha_secret_key: (optional)
+#   - secret_zadarma_key: (optional, for VoIP)

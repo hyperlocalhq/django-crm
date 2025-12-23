@@ -1,0 +1,36 @@
+[Unit]
+Description=gunicorn daemon
+After=network.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+User={{ user_username }}
+Group=www-data
+WorkingDirectory={{ local_repo_dir }}
+ExecStart={{ home_dir }}/venv/bin/gunicorn \
+    --workers {{ ansible_processor_vcpus | int * 2 + 1 }} \
+    --max-requests=1000 \
+    --max-requests-jitter=50 \
+    --bind 127.0.0.1:8000 \
+    --timeout 60 \
+    --keep-alive 360 \
+    --access-logfile - \
+    --error-logfile - \
+    {{ wsgi_module }}:application
+
+# Security hardening
+Environment=DJANGO_SETTINGS_MODULE={{ django_settings }}
+NoNewPrivileges=true          # Prevent privilege escalation
+PrivateTmp=true               # Isolate temporary directories
+ProtectHome=true              # Restrict access to /home, /root, /run/user
+ProtectSystem=full            # Mounts the /usr/, /boot, /efi and /etc/ read-only for processes invoked by this unit
+RestrictNamespaces=true       # Restrict kernel namespaces
+
+# Reliability
+KillMode=mixed
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

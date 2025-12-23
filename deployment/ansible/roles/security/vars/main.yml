@@ -1,0 +1,7 @@
+---
+# Security role variables
+
+# Fail2ban configuration paths
+fail2ban_config_dir: "/etc/fail2ban"
+fail2ban_filter_dir: "{{ fail2ban_config_dir }}/filter.d"
+fail2ban_jail_dir: "{{ fail2ban_config_dir }}/jail.d"

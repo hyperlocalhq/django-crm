@@ -1,0 +1,7 @@
+---
+# App role variables
+
+# Git repository
+project_repo: "git@github.com:hyperlocalhq/{{ project_name }}.git"
+project_branch_production: ""
+project_branch_staging: "main"

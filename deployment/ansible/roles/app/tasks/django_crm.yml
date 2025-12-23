@@ -1,0 +1,186 @@
+---
+# Django CRM Application Deployment Tasks
+# This file contains tasks specific to Django CRM
+# See: https://github.com/DjangoCRM/django-crm
+
+- name: "{{ deployment_environment }} server: Pull Django CRM repo from branch {{ project_branch_staging if deployment_environment == 'staging' else project_branch_production }}"
+  become: True
+  become_user: "{{ user_username }}"
+  git:
+    repo: "{{ project_repo }}"
+    dest: "{{ local_repo_dir }}"
+    accept_hostkey: True
+    version: "{{ project_branch_staging if deployment_environment == 'staging' else project_branch_production }}"
+  notify:
+    - Restart gunicorn
+  tags: [app, deploy]
+
+- name: Create tmp directory for logs
+  file:
+    path: "{{ local_repo_dir }}/tmp"
+    state: directory
+    owner: "{{ user_username }}"
+    group: "{{ group_groupname }}"
+    mode: "0755"
+  tags: [app, deploy]
+
+- name: Make sure that django.log exists and has correct ownership
+  file:
+    path: "{{ local_repo_dir }}/tmp/django.log"
+    owner: "{{ user_username }}"
+    group: "{{ group_groupname }}"
+    state: touch
+    mode: "0644"
+  tags: [app, deploy]
+
+- name: Ensure correct media-file ownership
+  command:
+    cmd: "chown -R {{ user_username }}:www-data {{ media_root }}"
+  tags: [app, deploy]
+
+- name: Create GeoIP database directory (optional)
+  file:
+    path: "{{ media_root }}/geodb"
+    state: directory
+    owner: "{{ user_username }}"
+    group: "www-data"
+    mode: "0755"
+  tags: [app, deploy]
+
+# Django CRM uses requirements.txt at root level
+- name: "uv pip sync Django CRM requirements"
+  become: True
+  become_user: "{{ user_username }}"
+  shell: "source {{ venv_activate }} && {{ uv_executable }} pip sync {{ local_repo_dir }}/{{ requirements_file | default('requirements.txt') }}"
+  args:
+    executable: /bin/bash
+  notify:
+    - Restart gunicorn
+  tags: [app, deploy, python]
+
+# Install PostgreSQL adapter if using PostgreSQL
+- name: "Install psycopg2 for PostgreSQL"
+  become: True
+  become_user: "{{ user_username }}"
+  shell: "source {{ venv_activate }} && {{ uv_executable }} pip install psycopg2-binary"
+  args:
+    executable: /bin/bash
+  when: "'postgresql' in (db_engine | default('postgresql'))"
+  tags: [app, deploy, python]
+
+# Django CRM uses local_settings.py for configuration overrides
+- name: Copy Django CRM local_settings.py
+  template:
+    src: django_crm_local_settings.py.j2
+    dest: "{{ local_repo_dir }}/webcrm/local_settings.py"
+    owner: "{{ user_username }}"
+    group: "{{ group_groupname }}"
+    mode: "0640"
+  notify:
+    - Restart gunicorn
+  tags: [app, deploy, config]
+
+# Django CRM requires setupdata before first migration
+# This command is idempotent and safe to run on every deploy
+- name: Django CRM setupdata (creates initial data)
+  become: True
+  become_user: "{{ user_username }}"
+  django_manage:
+    command: setupdata
+    app_path: "{{ local_repo_dir }}"
+    settings: "{{ django_settings }}"
+    virtualenv: "{{ venv_dir }}"
+  tags: [app, deploy, database]
+  ignore_errors: yes  # May fail on subsequent runs if data exists
+
+- name: Django migrate
+  django_manage:
+    command: migrate
+    app_path: "{{ local_repo_dir }}"
+    settings: "{{ django_settings }}"
+    virtualenv: "{{ venv_dir }}"
+  tags: [app, deploy, database]
+
+- name: Django collectstatic
+  django_manage:
+    command: collectstatic
+    app_path: "{{ local_repo_dir }}"
+    settings: "{{ django_settings }}"
+    virtualenv: "{{ venv_dir }}"
+  tags: [app, deploy]
+
+# Django CRM uses Celery for background tasks (optional)
+# Uncomment if you want to enable Celery
+# - name: Add celery as a systemd service
+#   template:
+#     src: celery.service.j2
+#     dest: /etc/systemd/system/celery.service
+#   notify:
+#     - Start celery
+#   tags: [app, config]
+#
+# - name: Add celerybeat as a systemd service
+#   template:
+#     src: celerybeat.service.j2
+#     dest: /etc/systemd/system/celerybeat.service
+#   notify:
+#     - Start celerybeat
+#   tags: [app, config]
+
+- name: Make sure gunicorn server is running
+  service:
+    name: gunicorn
+    state: started
+    enabled: True
+  tags: [app, deploy]
+
+# Note: Django CRM doesn't have the same deployment/commands structure
+# If you add custom shell commands, update this section
+- name: Prepare shell commands
+  become: true
+  become_user: "{{ user_username }}"
+  block:
+    - name: Check if online commands directory exists
+      stat:
+        path: "{{ local_repo_dir }}/deployment/online/commands"
+      register: online_commands_dir
+
+    - name: Find all .sh files in the online commands directory
+      find:
+        paths: "{{ local_repo_dir }}/deployment/online/commands"
+        patterns: "*.sh"
+      register: online_command_files
+      when: online_commands_dir.stat.exists
+
+    - name: Check if environment commands directory exists
+      stat:
+        path: "{{ local_repo_dir }}/deployment/{{ deployment_environment }}/commands"
+      register: env_commands_dir
+
+    - name: "Find all .sh files in the {{ deployment_environment }} commands directory"
+      find:
+        paths: "{{ local_repo_dir }}/deployment/{{ deployment_environment }}/commands"
+        patterns: "*.sh"
+      register: env_command_files
+      when: env_commands_dir.stat.exists
+
+    - name: "Symlink online commands to {{ home_dir }}/commands/"
+      file:
+        src: "{{ item.path }}"
+        dest: "{{ home_dir }}/commands/{{ item.path | basename }}"
+        owner: "{{ project_name }}"
+        group: "{{ group_groupname }}"
+        state: link
+      loop: "{{ online_command_files.files | default([]) }}"
+      when: online_commands_dir.stat.exists and online_command_files.matched | default(0) > 0
+
+    - name: "Symlink {{ deployment_environment }} commands to {{ home_dir }}/commands/"
+      file:
+        src: "{{ item.path }}"
+        dest: "{{ home_dir }}/commands/{{ item.path | basename }}"
+        owner: "{{ project_name }}"
+        group: "{{ group_groupname }}"
+        state: link
+      loop: "{{ env_command_files.files | default([]) }}"
+      when: env_commands_dir.stat.exists and env_command_files.matched | default(0) > 0
+  tags: [app, config]

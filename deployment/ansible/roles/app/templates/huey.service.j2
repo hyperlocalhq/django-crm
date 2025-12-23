@@ -1,0 +1,21 @@
+[Unit]
+Description=Huey service
+Requires=redis-server.service
+
+[Service]
+User={{ user_username }}
+Group={{ group_groupname }}
+WorkingDirectory={{ local_repo_dir }}
+ExecStart={{ home_dir }}/venv/bin/python manage.py run_huey --settings {{ django_settings }}
+ExecReload=/bin/kill -s SIGHUP $MAINPID
+ExecStop=/bin/kill -s SIGINT $MAINPID
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=10
+# Resource limits to prevent runaway processes
+MemoryLimit=500M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+---
+# Web/Application server handlers
+
+- name: Restart nginx
+  systemd:
+    name: nginx.service
+    state: restarted
+
+- name: Restart gunicorn
+  systemd:
+    name: gunicorn.service
+    state: restarted
+
+- name: Restart memcached
+  systemd:
+    name: memcached.service
+    state: restarted
+

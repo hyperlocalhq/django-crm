@@ -1,0 +1,12 @@
+---
+# Common role handlers
+
+- name: Restart redis-server
+  systemd:
+    name: redis-server.service
+    daemon_reload: yes  # run "systemctl daemon-reload" because we have overridden [Service] section.
+    state: restarted
+    enabled: True
+
+- name: Reload sysctl
+  command: sysctl -p

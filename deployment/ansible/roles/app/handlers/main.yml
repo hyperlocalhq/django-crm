@@ -1,0 +1,18 @@
+---
+# App role handlers
+
+- name: Restart gunicorn
+  systemd:
+    name: gunicorn.service
+    state: restarted
+
+- name: Start huey
+  systemd:
+    name: huey.service
+    state: started
+    enabled: True
+
+- name: Restart huey
+  systemd:
+    name: huey.service
+    state: restarted

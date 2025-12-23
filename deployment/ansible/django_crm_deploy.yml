@@ -1,0 +1,23 @@
+---
+# Django CRM Quick Deployment Playbook
+# Usage: ansible-playbook -i inventories/django-crm-staging/hosts.yml django_crm_deploy.yml
+
+- name: Deploy Django CRM Application
+  hosts: webservers
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Load Django CRM variables
+      include_vars:
+        file: vars/django_crm_vars.yml
+
+  tasks:
+    - name: Include Django CRM app tasks
+      include_tasks: roles/app/tasks/django_crm.yml
+      tags: [app, deploy]
+
+  handlers:
+    - name: Restart gunicorn
+      service:
+        name: gunicorn
+        state: restarted

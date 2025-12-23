@@ -1,0 +1,74 @@
+---
+# Project structure will be like this:
+# var/
+# └── webapps/                              ← install_root
+#     └── django_crm_demo/                  ← home_dir
+#         ├── .ssh/
+#         ├── commands/
+#         ├── db_backups/
+#         ├── logs/
+#         ├── project/
+#         │   └── django_crm_demo/          ← local_repo_dir
+#         │       ├── .git/
+#         │       ├── django_crm_demo/
+#         │       ├── __init__.py
+#         │       ├── manage.py
+#         │       ├── README.md
+#         │       └── requirements/
+#         ├── venv/
+#         └── .bash_profile
+
+
+# a unix path-friendly name (IE, no spaces or special characters)
+project_name: "django_crm_demo"
+user_username: "{{ project_name }}"
+group_groupname: "webapps"
+
+# the base path to install to. You should not need to change this.
+install_root: "/var/{{ group_groupname }}"
+
+home_dir: "{{ install_root }}/{{ project_name }}"
+
+# any directories that need to be added to the PYTHONPATH.
+local_repo_dir: "{{ home_dir }}/project/{{ project_name }}"
+
+# the dns name or names (space separated) for your server
+server_name: "{{ domain_name }}"
+
+# WSGI module
+wsgi_module: "{{ project_name }}.wsgi_{{ deployment_environment }}"
+
+# The value of your django project's STATIC_ROOT settings.
+# This will be the directory that django's `collectstatic` management command
+# copies static files to, and it must be an absolute path. The default value
+# here assumes that STATIC_ROOT is set in your settings.py like so:
+# STATIC_ROOT = os.path.abspath(os.path.join(BASE_DIR, "static"))
+static_root: "{{ local_repo_dir }}/static"
+media_root: "{{ home_dir }}/media"
+
+# Django configuration
+django_settings: "{{ project_name }}.settings.{{ deployment_environment }}"
+huey_workers: "{{ ansible_processor_vcpus | int * 2 + 1 }}"
+
+# Infisical configuration
+infisical_config:
+  host: "https://infisical.hyperlocal.cloud"
+  projects:
+    # Shared secrets across all projects (lower priority)
+    - name: "shared"
+      priority: 100
+      path: "/"
+      credentials_suffix: "SHARED"
+    # Project-specific secrets (higher priority - will override shared)
+    - name: "{{ project_name }}"
+      priority: 1
+      path: "/"
+      credentials_suffix: "{{ project_name | upper }}"
+
+# uv
+uv_executable: "{{ home_dir }}/.local/bin/uv"
+
+# venv
+venv_dir: "{{ home_dir }}/venv"
+venv_activate: "{{ venv_dir }}/bin/activate"
+venv_executable: "{{ venv_dir }}/bin/python"

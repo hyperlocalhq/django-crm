@@ -1,0 +1,5 @@
+---
+# Python role variables
+
+# Python version
+python_version: 3.12.11

@@ -1,0 +1,157 @@
+---
+# Web server setup tasks
+
+- name: Prepare nginx
+  block:
+    - name: Add basic auth for staging server (staging only)
+      htpasswd:
+        path: "{{ staging_basic_auth_path }}"
+        name: "{{ staging_basic_auth_user }}"
+        password: "{{ staging_basic_auth_password }}"
+        owner: root
+        group: www-data
+        mode: "0640"
+        crypt_scheme: md5_crypt
+      when: deployment_environment == "staging"
+
+    - name: Add basic auth for docs (production only)
+      htpasswd:
+        path: "{{ docs_basic_auth_path }}"
+        name: "{{ docs_basic_auth_user }}"
+        password: "{{ docs_basic_auth_password }}"
+        owner: root
+        group: www-data
+        mode: "0640"
+        crypt_scheme: md5_crypt
+      when: deployment_environment == "production"
+
+    - name: Remove default nginx site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify:
+        - Restart nginx
+
+    - name: Copy nginx-pre config
+      template:
+        src: nginx-pre.j2
+        dest: "/etc/nginx/sites-available/{{ project_name }}.conf"
+      notify:
+        - Restart nginx
+
+    - name: Create website configuration symlink
+      file:
+        src: "/etc/nginx/sites-available/{{ project_name }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ project_name }}.conf"
+        state: link
+      notify:
+        - Restart nginx
+  tags: [provision, web, config]
+
+- name: Install letsencrypt SSL certificate
+  block:
+    - name: Create letsencrypt directory
+      file:
+        name: /var/www/letsencrypt
+        state: directory
+
+    - name: Create letsencrypt certificate (incl docs subdomain)
+      shell: "certbot certonly -n --webroot -w /var/www/letsencrypt -m {{ letsencrypt_email }} --agree-tos --no-verify-ssl -d {{ domain_name }} -d www.{{ domain_name }} -d docs.{{ domain_name }}"
+      args:
+        creates: "/etc/letsencrypt/live/{{ domain_name }}"
+      when: deployment_environment == "production"
+
+    - name: Add letsencrypt cronjob for cert renewal (production)
+      cron:
+        name: letsencrypt_renewal
+        special_time: weekly
+        job: "certbot --renew-by-default certonly -n --nginx -w /var/www/letsencrypt -m {{ letsencrypt_email }} --agree-tos -d {{ domain_name }} -d www.{{ domain_name }} -d docs.{{ domain_name }} && systemctl reload nginx.service"
+      when: deployment_environment == "production"
+
+    - name: Create letsencrypt certificate (staging)
+      shell: "certbot certonly -n --webroot -w /var/www/letsencrypt -m {{ letsencrypt_email }} --agree-tos --no-verify-ssl -d {{ domain_name }}"
+      args:
+        creates: "/etc/letsencrypt/live/{{ domain_name }}"
+      when: deployment_environment == "staging"
+
+    - name: Add letsencrypt cronjob for cert renewal (staging)
+      cron:
+        name: letsencrypt_renewal
+        special_time: weekly
+        job: "certbot --renew-by-default certonly -n --nginx -w /var/www/letsencrypt -m {{ letsencrypt_email }} --agree-tos -d {{ domain_name }} && systemctl reload nginx.service"
+      when: deployment_environment == "staging"
+  tags: [provision, web, config]
+
+- name: Comment out default access_log in nginx.conf to prevent duplicates
+  lineinfile:
+    path: /etc/nginx/nginx.conf
+    regexp: '^\s*access_log\s+/var/log/nginx/access\.log;'
+    line: '	# access_log /var/log/nginx/access.log; # Commented out to prevent duplicate logging'
+    backup: yes
+  notify:
+    - Restart nginx
+  tags: [provision, web, config]
+
+- name: "Copy nginx-{{ deployment_environment }} config file"
+  template:
+    src: "nginx-{{ deployment_environment }}.j2"
+    dest: "/etc/nginx/sites-available/{{ project_name }}.conf"
+  notify:
+    - Restart nginx
+  tags: [provision, web, config]
+
+- name: Copy nginx configuration files
+  copy:
+    src: "{{ item.src }}"
+    dest: "/etc/nginx/conf.d/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { src: "nginx-logging.conf", dest: "logging.conf" }
+    - { src: "nginx-rate-limit.conf", dest: "nginx-rate-limit.conf" }
+    - { src: "nginx-cloudflare-ips.conf", dest: "nginx-cloudflare-ips.conf" }
+  notify:
+    - Restart nginx
+  tags: [provision, web, config]
+
+- name: Copy SSL configuration file
+  template:
+    src: ssl-config.conf.j2
+    dest: "/etc/nginx/ssl-config.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart nginx
+  tags: [provision, web, config]
+
+- name: Copy memcached config
+  template:
+    src: memcached.conf.j2
+    dest: /etc/memcached.conf
+  notify:
+    - Restart memcached
+  tags: [provision, web, config]
+
+- name: Add gunicorn as a systemd service
+  template:
+    src: gunicorn.service.j2
+    dest: /etc/systemd/system/gunicorn.service
+  notify:
+    - Restart gunicorn
+  tags: [provision, web, config]
+
+- name: Make sure gunicorn server is running
+  systemd:
+    name: gunicorn.service
+    state: started
+    enabled: True
+  tags: [provision, web, config]
+
+- name: Make sure nginx server is running
+  systemd:
+    name: nginx.service
+    state: started
+    enabled: True
+  tags: [provision, web, config]
