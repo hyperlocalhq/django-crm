@@ -1,22 +1,19 @@
 ---
 # Django CRM Full Server Provisioning Playbook
-# Usage: ansible-playbook -i inventories/staging/hosts.yml django_crm_provision.yml
+# Usage: ansible-playbook -i inventories/staging/hosts.yml provision.yml
 
 - name: Provision Django CRM Server
   hosts: webservers
   gather_facts: yes
+  vars_files:
+    - vars/vars.yml
 
-  # Safety check: Ensure we're only running against one host at a time
   pre_tasks:
     - name: Verify single host deployment
       fail:
         msg: "This playbook must be run against a single host. Found {{ ansible_play_hosts | length }} hosts."
       when: ansible_play_hosts | length > 1
       run_once: true
-
-    - name: Load Django CRM variables
-      include_vars:
-        file: vars/vars.yml
 
   roles:
     - common
@@ -25,7 +22,6 @@
     - python
     - web
 
-  # Django CRM app deployment uses custom tasks
   tasks:
     - name: Include Django CRM app tasks
       include_tasks: roles/app/tasks/django_crm.yml

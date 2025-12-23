@@ -1,15 +1,12 @@
 ---
 # Django CRM Quick Deployment Playbook
-# Usage: ansible-playbook -i inventories/staging/hosts.yml django_crm_deploy.yml
+# Usage: ansible-playbook -i inventories/staging/hosts.yml deploy.yml
 
 - name: Deploy Django CRM Application
   hosts: webservers
   gather_facts: yes
-
-  pre_tasks:
-    - name: Load Django CRM variables
-      include_vars:
-        file: vars/vars.yml
+  vars_files:
+    - vars/vars.yml
 
   tasks:
     - name: Include Django CRM app tasks
