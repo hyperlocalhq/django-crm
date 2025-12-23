@@ -16,7 +16,7 @@
 
     - name: Load Django CRM variables
       include_vars:
-        file: vars/django_crm_vars.yml
+        file: vars/vars.yml
 
   roles:
     - common
