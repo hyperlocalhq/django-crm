@@ -3,28 +3,6 @@
 
 - name: Prepare nginx
   block:
-    - name: Add basic auth for staging server (staging only)
-      htpasswd:
-        path: "{{ staging_basic_auth_path }}"
-        name: "{{ staging_basic_auth_user }}"
-        password: "{{ staging_basic_auth_password }}"
-        owner: root
-        group: www-data
-        mode: "0640"
-        crypt_scheme: md5_crypt
-      when: deployment_environment == "staging"
-
-    - name: Add basic auth for docs (production only)
-      htpasswd:
-        path: "{{ docs_basic_auth_path }}"
-        name: "{{ docs_basic_auth_user }}"
-        password: "{{ docs_basic_auth_password }}"
-        owner: root
-        group: www-data
-        mode: "0640"
-        crypt_scheme: md5_crypt
-      when: deployment_environment == "production"
-
     - name: Remove default nginx site
       file:
         path: /etc/nginx/sites-enabled/default
@@ -46,6 +24,11 @@
         state: link
       notify:
         - Restart nginx
+
+    - name: Ensure nginx is running with pre-configuration
+      systemd:
+        name: nginx.service
+        state: restarted
   tags: [provision, web, config]
 
 - name: Install letsencrypt SSL certificate
@@ -54,19 +37,6 @@
       file:
         name: /var/www/letsencrypt
         state: directory
-
-    - name: Create letsencrypt certificate (incl docs subdomain)
-      shell: "certbot certonly -n --webroot -w /var/www/letsencrypt -m {{ letsencrypt_email }} --agree-tos --no-verify-ssl -d {{ domain_name }} -d www.{{ domain_name }} -d docs.{{ domain_name }}"
-      args:
-        creates: "/etc/letsencrypt/live/{{ domain_name }}"
-      when: deployment_environment == "production"
-
-    - name: Add letsencrypt cronjob for cert renewal (production)
-      cron:
-        name: letsencrypt_renewal
-        special_time: weekly
-        job: "certbot --renew-by-default certonly -n --nginx -w /var/www/letsencrypt -m {{ letsencrypt_email }} --agree-tos -d {{ domain_name }} -d www.{{ domain_name }} -d docs.{{ domain_name }} && systemctl reload nginx.service"
-      when: deployment_environment == "production"
 
     - name: Create letsencrypt certificate (staging)
       shell: "certbot certonly -n --webroot -w /var/www/letsencrypt -m {{ letsencrypt_email }} --agree-tos --no-verify-ssl -d {{ domain_name }}"
