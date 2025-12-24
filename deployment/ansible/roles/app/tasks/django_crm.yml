@@ -11,6 +11,7 @@
     dest: "{{ local_repo_dir }}"
     accept_hostkey: True
     version: "{{ project_branch_staging if deployment_environment == 'staging' else project_branch_production }}"
+    force: yes
   notify:
     - Restart gunicorn
   tags: [app, deploy]
@@ -71,7 +72,7 @@
 # Django CRM uses local_settings.py for configuration overrides
 - name: Copy Django CRM local_settings.py
   template:
-    src: django_crm_local_settings.py.j2
+    src: "{{ playbook_dir }}/roles/app/templates/django_crm_local_settings.py.j2"
     dest: "{{ local_repo_dir }}/webcrm/local_settings.py"
     owner: "{{ user_username }}"
     group: "{{ group_groupname }}"
@@ -79,6 +80,16 @@
   notify:
     - Restart gunicorn
   tags: [app, deploy, config]
+
+- name: Make manage.py executable
+  file:
+    path: "{{ local_repo_dir }}/manage.py"
+    mode: "0755"
+  tags: [app, deploy]
+
+- name: Convert manage.py to Unix line endings
+  shell: "sed -i 's/\\r$//' {{ local_repo_dir }}/manage.py"
+  tags: [app, deploy]
 
 # Django CRM requires setupdata before first migration
 # This command is idempotent and safe to run on every deploy
@@ -93,7 +104,15 @@
   tags: [app, deploy, database]
   ignore_errors: yes  # May fail on subsequent runs if data exists
 
+- name: Remove stale lock files
+  file:
+    path: "/tmp/-var-webapps-django_crm-project-django_crm-manage-Massmail.lock"
+    state: absent
+  tags: [app, deploy, database]
+
 - name: Django migrate
+  become: True
+  become_user: "{{ user_username }}"
   django_manage:
     command: migrate
     app_path: "{{ local_repo_dir }}"
@@ -102,6 +121,8 @@
   tags: [app, deploy, database]
 
 - name: Django collectstatic
+  become: True
+  become_user: "{{ user_username }}"
   django_manage:
     command: collectstatic
     app_path: "{{ local_repo_dir }}"

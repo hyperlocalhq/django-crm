@@ -21,11 +21,16 @@ ExecStart={{ home_dir }}/venv/bin/gunicorn \
 
 # Security hardening
 Environment=DJANGO_SETTINGS_MODULE={{ django_settings }}
-NoNewPrivileges=true          # Prevent privilege escalation
-PrivateTmp=true               # Isolate temporary directories
-ProtectHome=true              # Restrict access to /home, /root, /run/user
-ProtectSystem=full            # Mounts the /usr/, /boot, /efi and /etc/ read-only for processes invoked by this unit
-RestrictNamespaces=true       # Restrict kernel namespaces
+# Prevent privilege escalation
+NoNewPrivileges=true
+# Isolate temporary directories
+PrivateTmp=true
+# Restrict access to /home, /root, /run/user
+ProtectHome=true
+# Mounts the /usr/, /boot, /efi and /etc/ read-only
+ProtectSystem=full
+# Restrict kernel namespaces
+RestrictNamespaces=true
 
 # Reliability
 KillMode=mixed
